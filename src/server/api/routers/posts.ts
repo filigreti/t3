@@ -1,6 +1,8 @@
 import { clerkClient } from "@clerk/nextjs/server";
 import type { User } from "@clerk/nextjs/dist/api";
 import { z } from "zod";
+import { Ratelimit } from "@upstash/ratelimit"; // for deno: see above
+import { Redis } from "@upstash/redis";
 
 import {
   createTRPCRouter,
@@ -8,6 +10,13 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 import { TRPCError } from "@trpc/server";
+
+// Create a new ratelimiter, that allows 10 requests per 10 seconds
+const ratelimit = new Ratelimit({
+  redis: Redis.fromEnv(),
+  limiter: Ratelimit.slidingWindow(3, "30 s"),
+  analytics: true,
+});
 
 const filterClientUser = (user: User) => {
   return {
@@ -50,6 +59,7 @@ export const postsRouter = createTRPCRouter({
       };
     });
   }),
+
   create: privateProcedure
     .input(
       z.object({
@@ -59,13 +69,21 @@ export const postsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const authorId = ctx.userId;
 
-      const post = await ctx.prisma.post.create({
-        data: {
-          authorId,
-          content: input.content,
-        },
-      });
+      const { success } = await ratelimit.limit(authorId);
 
-      return post;
+      if (!success) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "You are posting too fast",
+        });
+      } else {
+        const post = await ctx.prisma.post.create({
+          data: {
+            authorId,
+            content: input.content,
+          },
+        });
+        return post;
+      }
     }),
 });

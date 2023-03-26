@@ -5,7 +5,7 @@ import Head from "next/head";
 import Link from "next/link";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
-import { LoadingPage } from "~/components/Loader";
+import { LoadingPage, Spinner } from "../components/loader";
 
 dayjs.extend(relativeTime);
 
@@ -13,12 +13,12 @@ import { RouterOutputs, api } from "~/utils/api";
 import Image from "next/image";
 import { useState } from "react";
 import { type } from "../utils/api";
+import { toast } from "react-hot-toast";
 
 type UserPost = RouterOutputs["posts"]["getAll"][number];
 
 const PostView = (props: UserPost) => {
   const { post, author } = props;
-  console.log("author", author);
   return (
     <div className=" flex items-center" key={post?.id}>
       <Image
@@ -64,17 +64,21 @@ const CreatePostWizard = () => {
         setContent("");
         await ctx.posts.getAll.invalidate();
       },
+      onError: (err) => {
+        toast.error(err.message);
+      },
     });
   const [content, setContent] = useState<string>("");
   const createPost = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
+      e.preventDefault();
       triggerPost({ content });
     }
   };
 
   if (!user) return null;
   return (
-    <div className="flex gap-4">
+    <div className="relative flex gap-4">
       <Image
         className=" rounded"
         src={user.profileImageUrl}
@@ -89,7 +93,9 @@ const CreatePostWizard = () => {
         value={content}
         onChange={(e) => setContent(e.target.value)}
         onKeyDown={createPost}
+        disabled={isPosting}
       />
+      {isPosting && <Spinner />}
     </div>
   );
 };
@@ -107,6 +113,8 @@ const Home: NextPage = () => {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <main>
+        pablo
+        {!!isSignedIn}
         <div className=" mx-auto md:max-w-2xl">
           <div className=" border p-4">
             {!isSignedIn && <SignInButton />}
