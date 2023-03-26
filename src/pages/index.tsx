@@ -5,21 +5,60 @@ import Head from "next/head";
 import Link from "next/link";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
+import { LoadingPage } from "~/components/Loader";
 
 dayjs.extend(relativeTime);
 
 import { RouterOutputs, api } from "~/utils/api";
 import Image from "next/image";
 
-const Home: NextPage = () => {
-  const user = useUser();
-  const { data, isLoading } = api.posts.getAll.useQuery();
-  if (isLoading) return <div>Loading...</div>;
+type UserPost = RouterOutputs["posts"]["getAll"][number];
+
+const PostView = (props: UserPost) => {
+  const { post, author } = props;
+  console.log("author", author);
+  return (
+    <div className=" flex items-center" key={post?.id}>
+      <Image
+        className="h-10 w-10 rounded"
+        src={author.profileImageUrl}
+        alt=""
+        width={46}
+        height={46}
+      />
+
+      <div>
+        <div className=" flex gap-1 text-sm text-slate-400">
+          <div>@{author.username}</div>
+          <div>·</div>
+          <div className=" capitalize">{dayjs(post.createdAt).fromNow()}</div>
+        </div>
+        <div>{post?.content}</div>
+      </div>
+    </div>
+  );
+};
+
+const Feed = () => {
+  const { data, isLoading: postLoading } = api.posts.getAll.useQuery();
+  if (postLoading) return <LoadingPage />;
   if (!data) return <div>no data</div>;
 
+  return (
+    <div>
+      {data?.map((fullPost) => (
+        <PostView {...fullPost} key={fullPost.post.id} />
+      ))}
+    </div>
+  );
+};
+
+const Home: NextPage = () => {
+  const { isLoaded: userLoaded, isSignedIn } = useUser();
+  api.posts.getAll.useQuery();
+  if (!userLoaded) return <div />;
   const CreatePostWizard = () => {
     const { user } = useUser();
-    console.log("user", user);
     if (!user) return null;
     return (
       <div className="flex gap-4">
@@ -39,32 +78,6 @@ const Home: NextPage = () => {
     );
   };
 
-  type UserPost = RouterOutputs["posts"]["getAll"][number];
-
-  const PostView = (props: UserPost) => {
-    const { post, author } = props;
-    console.log("author", author);
-    return (
-      <div className=" flex items-center" key={post?.id}>
-        <Image
-          className="h-10 w-10 rounded"
-          src={author.profileImageUrl}
-          alt=""
-          width={46}
-          height={46}
-        />
-
-        <div>
-          <div className=" flex gap-1 text-sm text-slate-400">
-            <div>@{author.username}</div>
-            <div>·</div>
-            <div className=" capitalize">{dayjs(post.createdAt).fromNow()}</div>
-          </div>
-          <div>{post?.content}</div>
-        </div>
-      </div>
-    );
-  };
   return (
     <>
       <Head>
@@ -75,15 +88,11 @@ const Home: NextPage = () => {
       <main>
         <div className=" mx-auto md:max-w-2xl">
           <div className=" border p-4">
-            {!user.isSignedIn && <SignInButton />}
-            {!!user.isSignedIn && <CreatePostWizard />}
+            {!isSignedIn && <SignInButton />}
+            {!!isSignedIn && <CreatePostWizard />}
             <SignIn path="/sign-in" routing="path" signUpUrl="/sign-up" />
           </div>
-          <div>
-            {data?.map((fullPost) => (
-              <PostView {...fullPost} key={fullPost.post.id} />
-            ))}
-          </div>
+          <Feed />
         </div>
       </main>
     </>
