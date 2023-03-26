@@ -11,6 +11,8 @@ dayjs.extend(relativeTime);
 
 import { RouterOutputs, api } from "~/utils/api";
 import Image from "next/image";
+import { useState } from "react";
+import { type } from "../utils/api";
 
 type UserPost = RouterOutputs["posts"]["getAll"][number];
 
@@ -53,30 +55,49 @@ const Feed = () => {
   );
 };
 
+const CreatePostWizard = () => {
+  const { user } = useUser();
+  const ctx = api.useContext();
+  const { mutate: triggerPost, isLoading: isPosting } =
+    api.posts.create.useMutation({
+      onSuccess: async () => {
+        setContent("");
+        await ctx.posts.getAll.invalidate();
+      },
+    });
+  const [content, setContent] = useState<string>("");
+  const createPost = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      triggerPost({ content });
+    }
+  };
+
+  if (!user) return null;
+  return (
+    <div className="flex gap-4">
+      <Image
+        className=" rounded"
+        src={user.profileImageUrl}
+        alt=""
+        width={46}
+        height={46}
+      />
+      <input
+        type="text"
+        className="flex-grow   bg-transparent outline-none"
+        placeholder="Search"
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        onKeyDown={createPost}
+      />
+    </div>
+  );
+};
+
 const Home: NextPage = () => {
   const { isLoaded: userLoaded, isSignedIn } = useUser();
   api.posts.getAll.useQuery();
   if (!userLoaded) return <div />;
-  const CreatePostWizard = () => {
-    const { user } = useUser();
-    if (!user) return null;
-    return (
-      <div className="flex gap-4">
-        <Image
-          className=" rounded"
-          src={user.profileImageUrl}
-          alt=""
-          width={46}
-          height={46}
-        />
-        <input
-          type="text"
-          className="flex-grow   bg-transparent outline-none"
-          placeholder="Search"
-        />
-      </div>
-    );
-  };
 
   return (
     <>
