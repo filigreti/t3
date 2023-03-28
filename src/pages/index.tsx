@@ -31,9 +31,13 @@ const PostView = (props: UserPost) => {
 
       <div>
         <div className=" flex gap-1 text-sm text-slate-400">
-          <div>@{author.username}</div>
+          <Link href={`/@${author.username}`}>
+            <div>@{author.username}</div>
+          </Link>
           <div>·</div>
-          <div className=" capitalize">{dayjs(post.createdAt).fromNow()}</div>
+          <Link href={`/post/${post.id}`}>
+            <div className=" capitalize">{dayjs(post.createdAt).fromNow()}</div>
+          </Link>
         </div>
         <div>{post?.content}</div>
       </div>
@@ -113,8 +117,6 @@ const Home: NextPage = () => {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <main>
-        pablo
-        {!!isSignedIn}
         <div className=" mx-auto md:max-w-2xl">
           <div className=" border p-4">
             {!isSignedIn && <SignInButton />}
